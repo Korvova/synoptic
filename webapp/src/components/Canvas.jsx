@@ -137,7 +137,7 @@ const Canvas = ({ roomId, onBack }) => {
     }
     const resE = await api.put(
       `/rooms/${roomId}/elements/${elem.id}`,
-      { deviceId: device.id, label: elem.userId ? usersList.find(u => u.id === elem.userId)?.name : null }
+      { deviceId: device.id }
     );
     setElements(e => e.map(x => x.id === elem.id ? resE.data : x));
     closeDeviceModal();
@@ -148,7 +148,7 @@ const Canvas = ({ roomId, onBack }) => {
     const x0 = Math.round((rect.width - 40) / 2);
     const y0 = Math.round((rect.height - 40) / 2);
     const res = await api.post(`/rooms/${roomId}/elements`, {
-      typeId, x: x0, y: y0, state: 'on'
+      typeId, x: x0, y: y0, state: null
     });
     setElements(e => [...e, res.data]);
     setPickerOpen(false);
@@ -195,212 +195,213 @@ const Canvas = ({ roomId, onBack }) => {
               {type.imgNoId
                 ? <img src={type.imgNoId} alt={type.name} width={24} height={24}/>
                 : <div style={{ width:24, height:24, background:'#eee'}}/>}
-              <span style={{ marginLeft: 8 }}>{type.name}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      <CustomDragLayer typesMap={typesMap} />
-      <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
-        <form onSubmit={uploadBackground} style={{ margin: '10px 0' }}>
-          <input type="file" name="background" accept="image/*" />
-          <button type="submit">Загрузить фон</button>
-        </form>
-        <img
-          src={room.background}
-          alt=""
-          style={{ width: '100%', display: 'block' }}
-        />
-        {elements.map(elem => {
-          const type = typesMap[elem.typeId] || {};
-          let src = type.imgNoId;
-          if ((elem.deviceId || elem.userId) && type.imgWithId) src = type.imgWithId;
-          if (elem.state === 'on' && type.imgOn) src = type.imgOn;
-          if (elem.state === 'off' && type.imgOff) src = type.imgOff;
-          return (
-            <DraggableElement
-              key={elem.id}
-              elem={elem}
-              onDrop={async (id, x, y) => {
-                const r = await api.put(
-                  `/rooms/${roomId}/elements/${id}`,
-                  { x, y }
-                );
-                setElements(e => e.map(x => x.id === id ? r.data : x));
-              }}
-            >
-              <div
-                onClick={e => openMenu(e, elem)}
-                style={{ position: 'absolute', top: -20, left: 0, zIndex: 10 }}
-              >
-                <button
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
-                >🔧</button>
-              </div>
-              <img
-                src={src}
-                alt=""
-                style={{ width: 40, height: 40, pointerEvents: 'none' }}
-              />
-              {elem.label && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  background: '#000',
-                  color: '#fff',
-                  padding: '2px 4px',
-                  borderRadius: 2,
-                  whiteSpace: 'nowrap',
-                  fontSize: 12,
-                  marginTop: 4
-                }}>
-                  {elem.label}
+                            <span style={{ marginLeft: 8 }}>{type.name}</span>
+                        </div>
+                    ))}
                 </div>
-              )}
-            </DraggableElement>
-          );
-        })}
-        {menu.visible && (
-          <div style={{
-            position: 'absolute', top: menu.y, left: menu.x,
-            background: '#fff', border: '1px solid #ccc',
-            borderRadius: 4, boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-            zIndex: 100
-          }}>
-            {menu.elem.deviceId && devicesMap[menu.elem.deviceId] && (
-              <p style={{ padding: '4px 8px', margin: 0 }}>
-                Устройство: {devicesMap[menu.elem.deviceId].identifier}
-              </p>
             )}
-            <ul style={{ listStyle: 'none', margin: 0, padding: 8 }}>
-              <li>
-                <button onClick={toggleState} style={{ width: '100%' }}>
-                  {menu.elem.state === 'on' ? 'Выключить' : 'Включить'}
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={e => openUserModal(e, menu.elem)}
-                  style={{ width: '100%' }}
-                >
-                  Связать с пользователем
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={e => openDeviceModal(e, menu.elem)}
-                  style={{ width: '100%' }}
-                >
-                  Связать с устройством
-                </button>
-              </li>
-              <li>
-                <button onClick={deleteElem} style={{ width: '100%', color: 'red' }}>
-                  Удалить
-                </button>
-              </li>
-            </ul>
-          </div>
-        )}
-        {userModal.open && (
-          <div
-            onClick={closeUserModal}
-            style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(0,0,0,0.3)', display: 'flex',
-              alignItems: 'center', justifyContent: 'center', zIndex: 300
-            }}
-          >
-            <div
-              onClick={e => e.stopPropagation()}
-              style={{ background: '#fff', padding: 20, borderRadius: 6, width: 300 }}
-            >
-              <h4>Связать с пользователем</h4>
-              <div style={{ marginBottom: 10 }}>
-                <label>Ввести ФИО:</label><br />
-                <input
-                  type="text"
-                  value={newUserName}
-                  onChange={e => setNewUserName(e.target.value)}
-                  style={{ width: '100%', padding: 4 }}
+            <CustomDragLayer typesMap={typesMap} />
+            <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
+                <form onSubmit={uploadBackground} style={{ margin: '10px 0' }}>
+                    <input type="file" name="background" accept="image/*" />
+                    <button type="submit">Загрузить фон</button>
+                </form>
+                <img
+                    src={room.background}
+                    alt=""
+                    style={{ width: '100%', display: 'block' }}
                 />
-              </div>
-              <div style={{ marginBottom: 10 }}>
-                <label>Или выбрать из списка:</label><br />
-                <select
-                  value={selectedUserId}
-                  onChange={e => setSelectedUserId(e.target.value)}
-                  style={{ width: '100%', padding: 4 }}
-                >
-                  <option value="">-- нет --</option>
-                  {usersList.map(u => (
-                    <option key={u.id} value={u.id}>
-                      {u.name || u.identifier}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <button onClick={closeUserModal} style={{ marginRight: 8 }}>
-                  Отмена
-                </button>
-                <button onClick={linkUser}>Добавить</button>
-              </div>
+                {elements.map(elem => {
+                    const type = typesMap[elem.typeId] || {};
+                    let src = type.imgNoId;
+                    if (elem.deviceId && type.imgWithId) src = type.imgWithId;
+                    if (elem.state === 'on' && type.imgOn) src = type.imgOn;
+                    if (elem.state === 'off' && type.imgOff) src = type.imgOff;
+                    return (
+                        <DraggableElement
+                            key={elem.id}
+                            elem={elem}
+                            onDrop={async (id, x, y) => {
+                                const r = await api.put(
+                                    `/rooms/${roomId}/elements/${id}`,
+                                    { x, y }
+                                );
+                                setElements(e => e.map(x => x.id === id ? r.data : x));
+                            }}
+                        >
+                            <div
+                                onClick={e => openMenu(e, elem)}
+                                style={{ position: 'absolute', top: -20, left: 0, zIndex: 10 }}
+                            >
+                                <button
+                                    style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+                                >🔧</button>
+                            </div>
+                            <img
+                                src={src}
+                                alt=""
+                                style={{ width: 40, height: 40, pointerEvents: 'none' }}
+                            />
+                            {elem.label && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    background: '#000',
+                                    color: '#fff',
+                                    padding: '2px 4px',
+                                    borderRadius: 2,
+                                    whiteSpace: 'nowrap',
+                                    fontSize: 12,
+                                    marginTop: 4
+                                }}>
+                                    {elem.label}
+                                </div>
+                            )}
+                        </DraggableElement>
+                    );
+                })}
+                {menu.visible && (
+                    <div style={{
+                        position: 'absolute', top: menu.y, left: menu.x,
+                        background: '#fff', border: '1px solid #ccc',
+                        borderRadius: 4, boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                        zIndex: 100
+                    }}>
+                        {menu.elem.deviceId && devicesMap[menu.elem.deviceId] && (
+                            <p style={{ padding: '4px 8px', margin: 0 }}>
+                                Устройство: {devicesMap[menu.elem.deviceId].identifier}
+                            </p>
+                        )}
+                        <ul style={{ listStyle: 'none', margin: 0, padding: 8 }}>
+                            <li>
+                                <button onClick={toggleState} style={{ width: '100%' }}>
+                                    {menu.elem.state === 'on' ? 'Выключить' : 'Включить'}
+                                </button>
+                            </li>
+                            <li>
+                                <button
+                                    onClick={e => openUserModal(e, menu.elem)}
+                                    style={{ width: '100%' }}
+                                >
+                                    Связать с пользователем
+                                </button>
+                            </li>
+                            <li>
+                                <button
+                                    onClick={e => openDeviceModal(e, menu.elem)}
+                                    style={{ width: '100%' }}
+                                >
+                                    Связать с устройством
+                                </button>
+                            </li>
+                            <li>
+                                <button onClick={deleteElem} style={{ width: '100%', color: 'red' }}>
+                                    Удалить
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                )}
+                {userModal.open && (
+                    <div
+                        onClick={closeUserModal}
+                        style={{
+                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'rgba(0,0,0,0.3)', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', zIndex: 300
+                        }}
+                    >
+                        <div
+                            onClick={e => e.stopPropagation()}
+                            style={{ background: '#fff', padding: 20, borderRadius: 6, width: 300 }}
+                        >
+                            <h4>Связать с пользователем</h4>
+                            <div style={{ marginBottom: 10 }}>
+                                <label>Ввести ФИО:</label><br />
+                                <input
+                                    type="text"
+                                    value={newUserName}
+                                    onChange={e => setNewUserName(e.target.value)}
+                                    style={{ width: '100%', padding: 4 }}
+                                />
+                            </div>
+                            <div style={{ marginBottom: 10 }}>
+                                confiance
+                                <label>Или выбрать из списка:</label><br />
+                                <select
+                                    value={selectedUserId}
+                                    onChange={e => setSelectedUserId(e.target.value)}
+                                    style={{ width: '100%', padding: 4 }}
+                                >
+                                    <option value="">-- нет --</option>
+                                    {usersList.map(u => (
+                                        <option key={u.id} value={u.id}>
+                                            {u.name || u.identifier}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <button onClick={closeUserModal} style={{ marginRight: 8 }}>
+                                    Отмена
+                                </button>
+                                <button onClick={linkUser}>Добавить</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {deviceModal.open && (
+                    <div
+                        onClick={closeDeviceModal}
+                        style={{
+                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'rgba(0,0,0,0.3)', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', zIndex: 300
+                        }}
+                    >
+                        <div
+                            onClick={e => e.stopPropagation()}
+                            style={{ background: '#fff', padding: 20, borderRadius: 6, width: 300 }}
+                        >
+                            <h4>Связать с устройством</h4>
+                            <div style={{ marginBottom: 10 }}>
+                                <label>Ввести идентификатор:</label><br />
+                                <input
+                                    type="text"
+                                    value={newDeviceIdentifier}
+                                    onChange={e => setNewDeviceIdentifier(e.target.value)}
+                                    style={{ width: '100%', padding: 4 }}
+                                />
+                            </div>
+                            <div style={{ marginBottom: 10 }}>
+                                <label>Или выбрать из списка:</label><br />
+                                <select
+                                    value={selectedDeviceId}
+                                    onChange={e => setSelectedDeviceId(e.target.value)}
+                                    style={{ width: '100%', padding: 4 }}
+                                >
+                                    <option value="">-- нет --</option>
+                                    {devicesList.map(d => (
+                                        <option key={d.id} value={d.id}>
+                                            {d.identifier}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <button onClick={closeDeviceModal} style={{ marginRight: 8 }}>
+                                    Отмена
+                                </button>
+                                <button onClick={linkDevice}>Добавить</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
-          </div>
-        )}
-        {deviceModal.open && (
-          <div
-            onClick={closeDeviceModal}
-            style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(0,0,0,0.3)', display: 'flex',
-              alignItems: 'center', justifyContent: 'center', zIndex: 300
-            }}
-          >
-            <div
-              onClick={e => e.stopPropagation()}
-              style={{ background: '#fff', padding: 20, borderRadius: 6, width: 300 }}
-            >
-              <h4>Связать с устройством</h4>
-              <div style={{ marginBottom: 10 }}>
-                <label>Ввести идентификатор:</label><br />
-                <input
-                  type="text"
-                  value={newDeviceIdentifier}
-                  onChange={e => setNewDeviceIdentifier(e.target.value)}
-                  style={{ width: '100%', padding: 4 }}
-                />
-              </div>
-              <div style={{ marginBottom: 10 }}>
-                <label>Или выбрать из списка:</label><br />
-                <select
-                  value={selectedDeviceId}
-                  onChange={e => setSelectedDeviceId(e.target.value)}
-                  style={{ width: '100%', padding: 4 }}
-                >
-                  <option value="">-- нет --</option>
-                  {devicesList.map(d => (
-                    <option key={d.id} value={d.id}>
-                      {d.identifier}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <button onClick={closeDeviceModal} style={{ marginRight: 8 }}>
-                  Отмена
-                </button>
-                <button onClick={linkDevice}>Добавить</button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+        </div>
+    );
 };
 
 export default Canvas;
