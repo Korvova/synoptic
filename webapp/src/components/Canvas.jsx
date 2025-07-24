@@ -1,4 +1,3 @@
-// File: src/components/Canvas.jsx
 import React, { useEffect, useState, useRef } from 'react';
 import api from '../service/api';
 import DraggableElement from './DraggableElement';
@@ -10,40 +9,47 @@ const Canvas = ({ roomId, onBack }) => {
   const [typesMap, setTypesMap] = useState({});
   const [typesList, setTypesList] = useState([]);
   const [usersList, setUsersList] = useState([]);
+  const [devicesList, setDevicesList] = useState([]);
+  const [devicesMap, setDevicesMap] = useState({});
   const [loading, setLoading] = useState(true);
-
   const [menu, setMenu] = useState({ visible: false, elem: null, x: 0, y: 0 });
   const [pickerOpen, setPickerOpen] = useState(false);
   const [userModal, setUserModal] = useState({ open: false, elem: null });
-
   const [newUserName, setNewUserName] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
-
+  const [deviceModal, setDeviceModal] = useState({ open: false, elem: null });
+  const [newDeviceIdentifier, setNewDeviceIdentifier] = useState('');
+  const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const containerRef = useRef(null);
 
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true);
-      const [roomRes, elemsRes, typesRes, usersRes] = await Promise.all([
+      const [roomRes, elemsRes, typesRes, usersRes, devicesRes] = await Promise.all([
         api.get(`/rooms/${roomId}`),
         api.get(`/rooms/${roomId}/elements`),
         api.get('/types'),
         api.get('/users'),
+        api.get('/devices'),
       ]);
       setRoom(roomRes.data);
       setElements(elemsRes.data);
       setTypesList(typesRes.data);
       setUsersList(usersRes.data);
-      const map = {};
-      typesRes.data.forEach(t => { map[t.id] = t; });
-      setTypesMap(map);
+      setDevicesList(devicesRes.data);
+      const typeMap = {};
+      typesRes.data.forEach(t => { typeMap[t.id] = t; });
+      setTypesMap(typeMap);
+      const devMap = {};
+      devicesRes.data.forEach(d => { devMap[d.id] = d; });
+      setDevicesMap(devMap);
       setLoading(false);
     };
     fetchAll();
   }, [roomId]);
 
   if (loading) return <p>Загрузка...</p>;
-  if (!room)   return <p>Комната не найдена</p>;
+  if (!room) return <p>Комната не найдена</p>;
 
   const closeMenu = () => setMenu({ visible: false, elem: null, x: 0, y: 0 });
   const openMenu = (e, elem) => {
@@ -74,6 +80,7 @@ const Canvas = ({ roomId, onBack }) => {
     setUserModal({ open: true, elem });
     closeMenu();
   };
+
   const closeUserModal = () => {
     setUserModal({ open: false, elem: null });
     setNewUserName('');
@@ -103,9 +110,42 @@ const Canvas = ({ roomId, onBack }) => {
     closeUserModal();
   };
 
+  const openDeviceModal = (e, elem) => {
+    e.stopPropagation();
+    setDeviceModal({ open: true, elem });
+    closeMenu();
+  };
+
+  const closeDeviceModal = () => {
+    setDeviceModal({ open: false, elem: null });
+    setNewDeviceIdentifier('');
+    setSelectedDeviceId('');
+  };
+
+  const linkDevice = async () => {
+    const { elem } = deviceModal;
+    let device;
+    if (selectedDeviceId) {
+      device = devicesList.find(d => d.id === +selectedDeviceId);
+    } else if (newDeviceIdentifier.trim()) {
+      const resD = await api.post('/devices', { identifier: newDeviceIdentifier.trim() });
+      device = resD.data;
+      setDevicesList(d => [...d, device]);
+      setDevicesMap(m => ({ ...m, [device.id]: device }));
+    } else {
+      return;
+    }
+    const resE = await api.put(
+      `/rooms/${roomId}/elements/${elem.id}`,
+      { deviceId: device.id, label: elem.userId ? usersList.find(u => u.id === elem.userId)?.name : null }
+    );
+    setElements(e => e.map(x => x.id === elem.id ? resE.data : x));
+    closeDeviceModal();
+  };
+
   const addElement = async typeId => {
     const rect = containerRef.current.getBoundingClientRect();
-    const x0 = Math.round((rect.width  - 40) / 2);
+    const x0 = Math.round((rect.width - 40) / 2);
     const y0 = Math.round((rect.height - 40) / 2);
     const res = await api.post(`/rooms/${roomId}/elements`, {
       typeId, x: x0, y: y0, state: 'on'
@@ -131,8 +171,6 @@ const Canvas = ({ roomId, onBack }) => {
   return (
     <div onClick={closeMenu} style={{ position: 'relative' }}>
       <button onClick={onBack} style={{ marginBottom: '10px' }}>← Назад</button>
-
-      {/* Добавить элемент */}
       <button
         onClick={e => { e.stopPropagation(); setPickerOpen(!pickerOpen); }}
         style={{ marginLeft: 10 }}
@@ -156,35 +194,29 @@ const Canvas = ({ roomId, onBack }) => {
             >
               {type.imgNoId
                 ? <img src={type.imgNoId} alt={type.name} width={24} height={24}/>
-                : <div style={{ width:24, height:24, background:'#eee'}}/>
-              }
+                : <div style={{ width:24, height:24, background:'#eee'}}/>}
               <span style={{ marginLeft: 8 }}>{type.name}</span>
             </div>
           ))}
         </div>
       )}
-
       <CustomDragLayer typesMap={typesMap} />
-
       <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
         <form onSubmit={uploadBackground} style={{ margin: '10px 0' }}>
           <input type="file" name="background" accept="image/*" />
           <button type="submit">Загрузить фон</button>
         </form>
-
         <img
           src={room.background}
           alt=""
           style={{ width: '100%', display: 'block' }}
         />
-
         {elements.map(elem => {
           const type = typesMap[elem.typeId] || {};
           let src = type.imgNoId;
           if ((elem.deviceId || elem.userId) && type.imgWithId) src = type.imgWithId;
-          if (elem.state === 'on'  && type.imgOn)  src = type.imgOn;
+          if (elem.state === 'on' && type.imgOn) src = type.imgOn;
           if (elem.state === 'off' && type.imgOff) src = type.imgOff;
-
           return (
             <DraggableElement
               key={elem.id}
@@ -205,13 +237,11 @@ const Canvas = ({ roomId, onBack }) => {
                   style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
                 >🔧</button>
               </div>
-
               <img
                 src={src}
                 alt=""
                 style={{ width: 40, height: 40, pointerEvents: 'none' }}
               />
-
               {elem.label && (
                 <div style={{
                   position: 'absolute',
@@ -232,7 +262,6 @@ const Canvas = ({ roomId, onBack }) => {
             </DraggableElement>
           );
         })}
-
         {menu.visible && (
           <div style={{
             position: 'absolute', top: menu.y, left: menu.x,
@@ -240,6 +269,11 @@ const Canvas = ({ roomId, onBack }) => {
             borderRadius: 4, boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
             zIndex: 100
           }}>
+            {menu.elem.deviceId && devicesMap[menu.elem.deviceId] && (
+              <p style={{ padding: '4px 8px', margin: 0 }}>
+                Устройство: {devicesMap[menu.elem.deviceId].identifier}
+              </p>
+            )}
             <ul style={{ listStyle: 'none', margin: 0, padding: 8 }}>
               <li>
                 <button onClick={toggleState} style={{ width: '100%' }}>
@@ -255,6 +289,14 @@ const Canvas = ({ roomId, onBack }) => {
                 </button>
               </li>
               <li>
+                <button
+                  onClick={e => openDeviceModal(e, menu.elem)}
+                  style={{ width: '100%' }}
+                >
+                  Связать с устройством
+                </button>
+              </li>
+              <li>
                 <button onClick={deleteElem} style={{ width: '100%', color: 'red' }}>
                   Удалить
                 </button>
@@ -262,7 +304,6 @@ const Canvas = ({ roomId, onBack }) => {
             </ul>
           </div>
         )}
-
         {userModal.open && (
           <div
             onClick={closeUserModal}
@@ -306,6 +347,53 @@ const Canvas = ({ roomId, onBack }) => {
                   Отмена
                 </button>
                 <button onClick={linkUser}>Добавить</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {deviceModal.open && (
+          <div
+            onClick={closeDeviceModal}
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.3)', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', zIndex: 300
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ background: '#fff', padding: 20, borderRadius: 6, width: 300 }}
+            >
+              <h4>Связать с устройством</h4>
+              <div style={{ marginBottom: 10 }}>
+                <label>Ввести идентификатор:</label><br />
+                <input
+                  type="text"
+                  value={newDeviceIdentifier}
+                  onChange={e => setNewDeviceIdentifier(e.target.value)}
+                  style={{ width: '100%', padding: 4 }}
+                />
+              </div>
+              <div style={{ marginBottom: 10 }}>
+                <label>Или выбрать из списка:</label><br />
+                <select
+                  value={selectedDeviceId}
+                  onChange={e => setSelectedDeviceId(e.target.value)}
+                  style={{ width: '100%', padding: 4 }}
+                >
+                  <option value="">-- нет --</option>
+                  {devicesList.map(d => (
+                    <option key={d.id} value={d.id}>
+                      {d.identifier}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <button onClick={closeDeviceModal} style={{ marginRight: 8 }}>
+                  Отмена
+                </button>
+                <button onClick={linkDevice}>Добавить</button>
               </div>
             </div>
           </div>
