@@ -9,23 +9,31 @@ const Canvas = ({ roomId, onBack }) => {
   const [elements, setElements] = useState([]);
   const [typesMap, setTypesMap] = useState({});
   const [typesList, setTypesList] = useState([]);
+  const [usersList, setUsersList] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [menu, setMenu] = useState({ visible: false, elem: null, x: 0, y: 0 });
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [bgTimestamp, setBgTimestamp] = useState(Date.now()); // ← добавили
+  const [userModal, setUserModal] = useState({ open: false, elem: null });
+
+  const [newUserName, setNewUserName] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState('');
+
   const containerRef = useRef(null);
 
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true);
-      const [roomRes, elemsRes, typesRes] = await Promise.all([
+      const [roomRes, elemsRes, typesRes, usersRes] = await Promise.all([
         api.get(`/rooms/${roomId}`),
         api.get(`/rooms/${roomId}/elements`),
         api.get('/types'),
+        api.get('/users'),
       ]);
       setRoom(roomRes.data);
       setElements(elemsRes.data);
       setTypesList(typesRes.data);
+      setUsersList(usersRes.data);
       const map = {};
       typesRes.data.forEach(t => { map[t.id] = t; });
       setTypesMap(map);
@@ -38,15 +46,9 @@ const Canvas = ({ roomId, onBack }) => {
   if (!room)   return <p>Комната не найдена</p>;
 
   const closeMenu = () => setMenu({ visible: false, elem: null, x: 0, y: 0 });
-
   const openMenu = (e, elem) => {
     e.stopPropagation();
-    setMenu({
-      visible: true,
-      elem,
-      x: elem.x + 45,
-      y: elem.y - 5,
-    });
+    setMenu({ visible: true, elem, x: elem.x + 45, y: elem.y - 5 });
   };
 
   const toggleState = async () => {
@@ -56,50 +58,57 @@ const Canvas = ({ roomId, onBack }) => {
       `/rooms/${roomId}/elements/${elem.id}`,
       { state: newState }
     );
-    setElements(el => el.map(e => e.id === elem.id ? res.data : e));
-    closeMenu();
-  };
-
-  const linkDevice = async () => {
-    const id = menu.elem.id;
-    const deviceId = prompt('Введите ID устройства:');
-    if (!deviceId) return;
-    const res = await api.put(
-      `/rooms/${roomId}/elements/${id}`,
-      { deviceId: Number(deviceId) }
-    );
-    setElements(el => el.map(e => e.id === id ? res.data : e));
-    closeMenu();
-  };
-
-  const linkUser = async () => {
-    const id = menu.elem.id;
-    const userId = prompt('Введите ID пользователя:');
-    if (!userId) return;
-    const res = await api.put(
-      `/rooms/${roomId}/elements/${id}`,
-      { userId: Number(userId) }
-    );
-    setElements(el => el.map(e => e.id === id ? res.data : e));
+    setElements(e => e.map(x => x.id === elem.id ? res.data : x));
     closeMenu();
   };
 
   const deleteElem = async () => {
     const id = menu.elem.id;
     await api.delete(`/rooms/${roomId}/elements/${id}`);
-    setElements(el => el.filter(e => e.id !== id));
+    setElements(e => e.filter(x => x.id !== id));
     closeMenu();
+  };
+
+  const openUserModal = (e, elem) => {
+    e.stopPropagation();
+    setUserModal({ open: true, elem });
+    closeMenu();
+  };
+  const closeUserModal = () => {
+    setUserModal({ open: false, elem: null });
+    setNewUserName('');
+    setSelectedUserId('');
+  };
+
+  const linkUser = async () => {
+    const { elem } = userModal;
+    let user;
+    if (selectedUserId) {
+      user = usersList.find(u => u.id === +selectedUserId);
+    } else if (newUserName.trim()) {
+      const resU = await api.post('/users', {
+        identifier: newUserName.trim(),
+        name: newUserName.trim()
+      });
+      user = resU.data;
+      setUsersList(u => [...u, user]);
+    } else {
+      return;
+    }
+    const resE = await api.put(
+      `/rooms/${roomId}/elements/${elem.id}`,
+      { userId: user.id, label: user.name }
+    );
+    setElements(e => e.map(x => x.id === elem.id ? resE.data : x));
+    closeUserModal();
   };
 
   const addElement = async typeId => {
     const rect = containerRef.current.getBoundingClientRect();
-    const defaultX = Math.round((rect.width  - 40) / 2);
-    const defaultY = Math.round((rect.height - 40) / 2);
+    const x0 = Math.round((rect.width  - 40) / 2);
+    const y0 = Math.round((rect.height - 40) / 2);
     const res = await api.post(`/rooms/${roomId}/elements`, {
-      typeId,
-      x: defaultX,
-      y: defaultY,
-      state: 'on'
+      typeId, x: x0, y: y0, state: 'on'
     });
     setElements(e => [...e, res.data]);
     setPickerOpen(false);
@@ -111,24 +120,19 @@ const Canvas = ({ roomId, onBack }) => {
     if (!file) return;
     const fd = new FormData();
     fd.append('background', file);
-    try {
-      const res = await api.post(
-        `/rooms/${roomId}/background`,
-        fd,
-        { headers: { 'Content-Type': 'multipart/form-data' } }
-      );
-      setRoom(res.data);
-      setBgTimestamp(Date.now()); // ← обновляем штамп
-    } catch (err) {
-      console.error('Ошибка загрузки фона:', err);
-    }
+    const res = await api.post(
+      `/rooms/${roomId}/background`,
+      fd,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    setRoom(res.data);
   };
 
   return (
     <div onClick={closeMenu} style={{ position: 'relative' }}>
       <button onClick={onBack} style={{ marginBottom: '10px' }}>← Назад</button>
 
-      {/* Добавление нового элемента */}
+      {/* Добавить элемент */}
       <button
         onClick={e => { e.stopPropagation(); setPickerOpen(!pickerOpen); }}
         style={{ marginLeft: 10 }}
@@ -137,19 +141,22 @@ const Canvas = ({ roomId, onBack }) => {
       </button>
       {pickerOpen && (
         <div style={{
-          position: 'absolute', top: 40, left: 10, background: '#fff',
-          border: '1px solid #ccc', padding: 8, borderRadius: 4,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.2)', zIndex: 200
+          position: 'absolute', top: 40, left: 10, zIndex: 200,
+          background: '#fff', border: '1px solid #ccc',
+          padding: 8, borderRadius: 4, boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
         }}>
           {typesList.map(type => (
             <div
               key={type.id}
               onClick={() => addElement(type.id)}
-              style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', cursor: 'pointer' }}
+              style={{
+                display: 'flex', alignItems: 'center',
+                padding: '4px 8px', cursor: 'pointer'
+              }}
             >
               {type.imgNoId
-                ? <img src={type.imgNoId} alt={type.name} width={24} height={24} />
-                : <div style={{ width:24, height:24, background:'#eee' }}/>
+                ? <img src={type.imgNoId} alt={type.name} width={24} height={24}/>
+                : <div style={{ width:24, height:24, background:'#eee'}}/>
               }
               <span style={{ marginLeft: 8 }}>{type.name}</span>
             </div>
@@ -166,7 +173,7 @@ const Canvas = ({ roomId, onBack }) => {
         </form>
 
         <img
-          src={`${room.background}?cb=${bgTimestamp}`}
+          src={room.background}
           alt=""
           style={{ width: '100%', display: 'block' }}
         />
@@ -183,17 +190,45 @@ const Canvas = ({ roomId, onBack }) => {
               key={elem.id}
               elem={elem}
               onDrop={async (id, x, y) => {
-                const r = await api.put(`/rooms/${roomId}/elements/${id}`, { x, y });
-                setElements(el => el.map(e => e.id === id ? r.data : e));
+                const r = await api.put(
+                  `/rooms/${roomId}/elements/${id}`,
+                  { x, y }
+                );
+                setElements(e => e.map(x => x.id === id ? r.data : x));
               }}
             >
-              <div onClick={e => openMenu(e, elem)}
-                   style={{ position: 'absolute', top: -20, left: 0, zIndex: 10 }}>
-                <button style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
-                  🔧
-                </button>
+              <div
+                onClick={e => openMenu(e, elem)}
+                style={{ position: 'absolute', top: -20, left: 0, zIndex: 10 }}
+              >
+                <button
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+                >🔧</button>
               </div>
-              <img src={src} alt="" style={{ width: 40, height: 40, pointerEvents: 'none' }} />
+
+              <img
+                src={src}
+                alt=""
+                style={{ width: 40, height: 40, pointerEvents: 'none' }}
+              />
+
+              {elem.label && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: '#000',
+                  color: '#fff',
+                  padding: '2px 4px',
+                  borderRadius: 2,
+                  whiteSpace: 'nowrap',
+                  fontSize: 12,
+                  marginTop: 4
+                }}>
+                  {elem.label}
+                </div>
+              )}
             </DraggableElement>
           );
         })}
@@ -201,8 +236,9 @@ const Canvas = ({ roomId, onBack }) => {
         {menu.visible && (
           <div style={{
             position: 'absolute', top: menu.y, left: menu.x,
-            background: '#fff', border: '1px solid #ccc', borderRadius: 4,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)', zIndex: 100
+            background: '#fff', border: '1px solid #ccc',
+            borderRadius: 4, boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            zIndex: 100
           }}>
             <ul style={{ listStyle: 'none', margin: 0, padding: 8 }}>
               <li>
@@ -211,12 +247,10 @@ const Canvas = ({ roomId, onBack }) => {
                 </button>
               </li>
               <li>
-                <button onClick={linkDevice} style={{ width: '100%' }}>
-                  Связать с устройством
-                </button>
-              </li>
-              <li>
-                <button onClick={linkUser} style={{ width: '100%' }}>
+                <button
+                  onClick={e => openUserModal(e, menu.elem)}
+                  style={{ width: '100%' }}
+                >
                   Связать с пользователем
                 </button>
               </li>
@@ -226,6 +260,54 @@ const Canvas = ({ roomId, onBack }) => {
                 </button>
               </li>
             </ul>
+          </div>
+        )}
+
+        {userModal.open && (
+          <div
+            onClick={closeUserModal}
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.3)', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', zIndex: 300
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ background: '#fff', padding: 20, borderRadius: 6, width: 300 }}
+            >
+              <h4>Связать с пользователем</h4>
+              <div style={{ marginBottom: 10 }}>
+                <label>Ввести ФИО:</label><br />
+                <input
+                  type="text"
+                  value={newUserName}
+                  onChange={e => setNewUserName(e.target.value)}
+                  style={{ width: '100%', padding: 4 }}
+                />
+              </div>
+              <div style={{ marginBottom: 10 }}>
+                <label>Или выбрать из списка:</label><br />
+                <select
+                  value={selectedUserId}
+                  onChange={e => setSelectedUserId(e.target.value)}
+                  style={{ width: '100%', padding: 4 }}
+                >
+                  <option value="">-- нет --</option>
+                  {usersList.map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.name || u.identifier}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <button onClick={closeUserModal} style={{ marginRight: 8 }}>
+                  Отмена
+                </button>
+                <button onClick={linkUser}>Добавить</button>
+              </div>
+            </div>
           </div>
         )}
       </div>
