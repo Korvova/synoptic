@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { useState } from 'react';
-import { Routes, Route, Link, Navigate } from 'react-router-dom';
+import { Routes, Route, Link, Navigate, useParams } from 'react-router-dom';
 import RoomList from './components/RoomList';
 import Canvas from './components/Canvas';
 import TypeSettings from './components/TypeSettings';
@@ -11,32 +11,30 @@ export default function App() {
   return (
     <div className="App" style={{ padding: '20px' }}>
       <nav style={{ marginBottom: '20px' }}>
-        <Link to="/">Комнаты</Link> |{' '}
-        <Link to="/settings/types">Настройка типов</Link>
+        <Link to="/synoptic/">Комнаты</Link> |{' '}
+        <Link to="/synoptic/settings/types">Настройка типов</Link>
       </nav>
       <Routes>
         <Route
-          path="/"
+          path="/synoptic/"
           element={
             selectedRoomId ? (
-              <Navigate to={`/rooms/${selectedRoomId}`} />
+              <Navigate to={`/synoptic/rooms/${selectedRoomId}`} />
             ) : (
               <RoomList onSelectRoom={setSelectedRoomId} />
             )
           }
         />
         <Route
-          path="/rooms/:id"
+          path="/synoptic/rooms/:id"
           element={<CanvasWrapper onBack={() => setSelectedRoomId(null)} />}
         />
-        <Route path="/settings/types" element={<TypeSettings />} />
+        <Route path="/synoptic/settings/types" element={<TypeSettings />} />
       </Routes>
     </div>
   );
 }
 
-// Обёртка для Canvas, чтобы читать id из URL
-import { useParams } from 'react-router-dom';
 function CanvasWrapper({ onBack }) {
   const { id } = useParams();
   return <Canvas roomId={Number(id)} onBack={onBack} />;

@@ -15,27 +15,19 @@ const path = require('path');
 
 app.use(express.json());
 
-// Health check endpoint
-app.get('/ping', async (req, res) => {
+app.use('/synoptic/api/devices', devicesRouter);
+app.use('/synoptic/api/users', usersRouter);
+app.use('/synoptic/api/rooms/:roomId/elements', elementsRouter);
+app.use('/synoptic/api/types', typesRouter);
+app.use('/synoptic/api/rooms', roomsRouter);
+
+// Также статические файлы:
+app.use('/synoptic/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Плюс endpoint проверки здоровья:
+app.get('/synoptic/api/ping', async (req, res) => {
   res.json({ status: 'ok' });
 });
-
-
-
-
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-app.use('/api/devices', devicesRouter);
-app.use('/api/users',   usersRouter);
-
-
-app.use('/api/rooms/:roomId/elements', elementsRouter);
-
-
-app.use('/api/types', typesRouter);
-
-
-app.use('/api/rooms', roomsRouter);
 
 
 app.listen(PORT, () => {

@@ -58,10 +58,10 @@ export default function TypeSettings() {
             >
               <td>{t.id}</td>
               <td>{t.name}</td>
-              <td>{t.imgNoId && <img src={t.imgNoId} width={40} />}</td>
-              <td>{t.imgWithId && <img src={t.imgWithId} width={40} />}</td>
-              <td>{t.imgOn && <img src={t.imgOn} width={40} />}</td>
-              <td>{t.imgOff && <img src={t.imgOff} width={40} />}</td>
+              <td>{t.imgNoId && <img src={`/synoptic${t.imgNoId}`} width={40} />}</td>
+              <td>{t.imgWithId && <img src={`/synoptic${t.imgWithId}`} width={40} />}</td>
+              <td>{t.imgOn && <img src={`/synoptic${t.imgOn}`} width={40} />}</td>
+              <td>{t.imgOff && <img src={`/synoptic${t.imgOff}`} width={40} />}</td>
             </tr>
           ))}
         </tbody>

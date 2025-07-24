@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import api from '../service/api';
 import DraggableElement from './DraggableElement';
 import CustomDragLayer from './CustomDragLayer';
+import { withPrefix } from '../utils/pathHelpers';
 
 const Canvas = ({ roomId, onBack }) => {
   const [room, setRoom] = useState(null);
@@ -21,6 +22,7 @@ const Canvas = ({ roomId, onBack }) => {
   const [newDeviceIdentifier, setNewDeviceIdentifier] = useState('');
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const containerRef = useRef(null);
+  
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -192,12 +194,20 @@ const Canvas = ({ roomId, onBack }) => {
                 padding: '4px 8px', cursor: 'pointer'
               }}
             >
-              {type.imgNoId
-                ? <img src={type.imgNoId} alt={type.name} width={24} height={24}/>
-                : <div style={{ width:24, height:24, background:'#eee'}}/>}
+             
+
+             {type.imgNoId
+  ? <img src={withPrefix(type.imgNoId)} alt={type.name} width={24} height={24} />
+  : <div style={{ width:24, height:24, background:'#eee'}} />}
+
+
+
                             <span style={{ marginLeft: 8 }}>{type.name}</span>
                         </div>
                     ))}
+
+
+
                 </div>
             )}
             <CustomDragLayer typesMap={typesMap} />
@@ -206,17 +216,25 @@ const Canvas = ({ roomId, onBack }) => {
                     <input type="file" name="background" accept="image/*" />
                     <button type="submit">Загрузить фон</button>
                 </form>
-                <img
-                    src={room.background}
-                    alt=""
-                    style={{ width: '100%', display: 'block' }}
-                />
+
+
+<img
+  src={withPrefix(room.background)}
+  alt=""
+  style={{ width: '100%', display: 'block' }}
+/>
+
+
+
+
+
                 {elements.map(elem => {
                     const type = typesMap[elem.typeId] || {};
-                    let src = type.imgNoId;
-                    if (elem.deviceId && type.imgWithId) src = type.imgWithId;
-                    if (elem.state === 'on' && type.imgOn) src = type.imgOn;
-                    if (elem.state === 'off' && type.imgOff) src = type.imgOff;
+    let src = type.imgNoId;
+if (elem.deviceId && type.imgWithId) src = type.imgWithId;
+if (elem.state === 'on' && type.imgOn) src = type.imgOn;
+if (elem.state === 'off' && type.imgOff) src = type.imgOff;
+if (src) src = withPrefix(src);
                     return (
                         <DraggableElement
                             key={elem.id}

@@ -43,10 +43,11 @@ export default function CustomDragLayer({ typesMap }) {
   }
 
   const type = typesMap[item.typeId] || {};
-  let src = type.imgNoId;
-  if ((item.deviceId || item.userId) && type.imgWithId) src = type.imgWithId;
-  if (item.state === 'on'  && type.imgOn)  src = type.imgOn;
-  if (item.state === 'off' && type.imgOff) src = type.imgOff;
+let src = type.imgNoId;
+if ((item.deviceId || item.userId) && type.imgWithId) src = type.imgWithId;
+if (item.state === 'on' && type.imgOn) src = type.imgOn;
+if (item.state === 'off' && type.imgOff) src = type.imgOff;
+if (src) src = `/synoptic${src}`;  // ← добавлено
 
   const styles = getItemStyles(initialClientOffset, clientOffset);
 
