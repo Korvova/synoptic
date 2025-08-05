@@ -1,0 +1,8 @@
+{
+  "name": "Synoptic Camera API",
+  "version": "1.0.0",
+  "title": "Synoptic Camera API",
+  "description": "VISCA over IP adapter API (PTZ / Zoom / Focus / Presets)",
+  "url": "http://217.114.10.226:3000",
+  "sampleUrl": "http://217.114.10.226:3000"
+}
