@@ -22,6 +22,9 @@ const Canvas = ({ roomId, onBack }) => {
   const [newDeviceIdentifier, setNewDeviceIdentifier] = useState('');
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const containerRef = useRef(null);
+
+   // ─────────── ГРОМКОСТЬ ───────────
+  const [volumeModal, setVolumeModal] = useState({ open: false, elem: null, value: 50 });
   
 
   useEffect(() => {
@@ -76,6 +79,37 @@ const Canvas = ({ roomId, onBack }) => {
     setElements(e => e.filter(x => x.id !== id));
     closeMenu();
   };
+
+
+
+
+
+  // ─────────── helpers громкости ───────────
+  const openVolumeModal = (e, elem) => {
+    e.stopPropagation();
+    setVolumeModal({ open: true, elem, value: elem.volume ?? 50 });
+    closeMenu();
+  };
+
+  const closeVolumeModal = () =>
+    setVolumeModal({ open: false, elem: null, value: 50 });
+
+  const saveVolume = async () => {
+    const { elem, value } = volumeModal;
+    const res = await api.put(
+      `/rooms/${roomId}/elements/${elem.id}`,
+      { volume: value }
+    );
+    setElements(e => e.map(x => x.id === elem.id ? res.data : x));
+    closeVolumeModal();
+  };
+
+
+
+
+
+
+
 
   const openUserModal = (e, elem) => {
     e.stopPropagation();
@@ -260,6 +294,41 @@ if (src) src = withPrefix(src);
                                 alt=""
                                 style={{ width: 40, height: 40, pointerEvents: 'none' }}
                             />
+
+
+
+
+
+{typeof elem.volume === 'number' && (
+  <div
+    style={{
+      position: 'absolute',
+      top: 44,          // чуть ниже иконки (40 px + 4 px отступ)
+      left: 0,
+      width: 40,
+      height: 4,
+      background: '#ccc',
+      borderRadius: 2,
+      overflow: 'hidden'
+    }}
+  >
+    <div
+      style={{
+        width: `${Math.min(elem.volume, 100)}%`,
+        height: '100%',
+        background: '#2196f3'
+      }}
+    />
+  </div>
+)}
+
+
+
+
+
+
+
+
                             {elem.label && (
                                 <div style={{
                                     position: 'absolute',
@@ -298,6 +367,24 @@ if (src) src = withPrefix(src);
                                     {menu.elem.state === 'on' ? 'Выключить' : 'Включить'}
                                 </button>
                             </li>
+
+
+
+
+    <li>
+      <button
+        onClick={e => openVolumeModal(e, menu.elem)}
+        style={{ width:'100%' }}
+      >
+        Громкость…
+      </button>
+   </li>
+
+
+
+
+
+
                             <li>
                                 <button
                                     onClick={e => openUserModal(e, menu.elem)}
@@ -322,6 +409,14 @@ if (src) src = withPrefix(src);
                         </ul>
                     </div>
                 )}
+
+
+
+
+
+
+
+
                 {userModal.open && (
                     <div
                         onClick={closeUserModal}
@@ -370,6 +465,52 @@ if (src) src = withPrefix(src);
                         </div>
                     </div>
                 )}
+
+
+
+
+{volumeModal.open && (
+  <div
+    onClick={closeVolumeModal}
+    style={{
+      position:'fixed', inset:0,
+      background:'rgba(0,0,0,0.3)',
+      display:'flex', alignItems:'center', justifyContent:'center', zIndex:300
+    }}
+  >
+    <div
+      onClick={e => e.stopPropagation()}
+      style={{ background:'#fff', padding:20, borderRadius:6, width:300 }}
+    >
+      <h4>Установить громкость</h4>
+      <input
+        type="range" min="0" max="100"
+        value={volumeModal.value}
+        onChange={e =>
+          setVolumeModal(m => ({ ...m, value: +e.target.value }))
+        }
+        style={{ width:'100%' }}
+      />
+      <p style={{ textAlign:'center', margin:8 }}>
+        {volumeModal.value} %
+      </p>
+      <div style={{ textAlign:'right' }}>
+        <button onClick={closeVolumeModal} style={{ marginRight:8 }}>
+          Отмена
+        </button>
+        <button onClick={saveVolume}>Сохранить</button>
+      </div>
+    </div>
+  </div>
+)}
+
+
+
+
+
+
+
+
                 {deviceModal.open && (
                     <div
                         onClick={closeDeviceModal}
