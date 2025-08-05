@@ -32,7 +32,7 @@ router.get('/', async (req, res) => {
 // POST /api/rooms/:roomId/elements — создать элемент
 router.post('/', async (req, res) => {
   const roomId = parseInt(req.params.roomId, 10);
-  const { typeId, x, y, volume, state, label, deviceId, userId, imgWithoutId, imgWithId, imgOn, imgOff } = req.body;
+  const { typeId, x, y, volume, state, label, deviceId, presetId, userId, imgWithoutId, imgWithId, imgOn, imgOff } = req.body;
   try {
     const element = await prisma.element.create({
       data: { roomId, typeId, x, y, volume, state, label, deviceId, userId, imgWithoutId, imgWithId, imgOn, imgOff }
@@ -48,11 +48,11 @@ router.post('/', async (req, res) => {
 // PUT /api/rooms/:roomId/elements/:id — обновить элемент
 router.put('/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const { typeId, x, y, volume, state, label, deviceId, userId, imgWithoutId, imgWithId, imgOn, imgOff } = req.body;
+  const { typeId, x, y, volume, state, label, deviceId, presetId, userId, imgWithoutId, imgWithId, imgOn, imgOff } = req.body;
   try {
     const element = await prisma.element.update({
       where: { id },
-      data: { typeId, x, y, volume, state, label, deviceId, userId, imgWithoutId, imgWithId, imgOn, imgOff }
+      data: { typeId, x, y, volume, state, label, deviceId, userId, presetId, imgWithoutId, imgWithId, imgOn, imgOff }
     });
     res.json(element);
     await sendWebhook(element.roomId, 'element.updated', element);

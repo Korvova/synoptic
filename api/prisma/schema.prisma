@@ -20,33 +20,37 @@ model Room {
 model ElementType {
   id        Int       @id @default(autoincrement())
   name      String    @unique
-  imgNoId   String?   // картинка без ID
-  imgWithId String?   // картинка с ID
-  imgOn     String?   // картинка вкл
-  imgOff    String?   // картинка выкл
+  imgNoId   String? // картинка без ID
+  imgWithId String? // картинка с ID
+  imgOn     String? // картинка вкл
+  imgOff    String? // картинка выкл
   elements  Element[]
 }
 
 model Element {
-  id        Int         @id @default(autoincrement())
-  room      Room        @relation(fields: [roomId], references: [id])
-  roomId    Int
+  id     Int  @id @default(autoincrement())
+  room   Room @relation(fields: [roomId], references: [id])
+  roomId Int
 
-  type      ElementType @relation(fields: [typeId], references: [id])
-  typeId    Int
+  type   ElementType @relation(fields: [typeId], references: [id])
+  typeId Int
 
-  x         Int
-  y         Int
-  state     String?
-  label     String?
+  x     Int
+  y     Int
+  state String?
+  label String?
 
-  deviceId  Int?
-  device    Device?     @relation(fields: [deviceId], references: [id])
+  deviceId Int?
+  device   Device? @relation(fields: [deviceId], references: [id])
 
-  userId    Int?
-  user      User?       @relation(fields: [userId], references: [id])
+  userId Int?
+  user   User? @relation(fields: [userId], references: [id])
 
-  volume    Int?
+  volume Int?
+
+  // ───── связь с пресетом камеры ─────
+  presetId Int?
+  preset   Preset? @relation("PresetElement", fields: [presetId], references: [id])
 }
 
 model Device {
@@ -60,4 +64,27 @@ model User {
   identifier String    @unique
   name       String?
   elements   Element[] // relation back to Element.user
+}
+
+model Camera {
+  id         Int    @id @default(autoincrement())
+  identifier String @unique // например, IP или серийник
+
+  name String?
+
+  presets Preset[]
+}
+
+model Preset {
+  id          Int     @id @default(autoincrement())
+  number      Int // «1», «2», «3» …
+  description String?
+
+  cameraId Int
+  camera   Camera @relation(fields: [cameraId], references: [id])
+
+  /// связанный элемент (FK хранится в Element.presetId)
+  elements Element[] @relation("PresetElement")
+
+  @@unique([cameraId, number]) // у одной камеры номера уникальны
 }

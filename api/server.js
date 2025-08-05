@@ -10,9 +10,9 @@ const elementsRouter = require('./routes/elements');
 const typesRouter = require('./routes/types');
 const devicesRouter = require('./routes/devices');
 const usersRouter   = require('./routes/users');
-
+const camerasRouter = require('./routes/cameras');
 const cameraMockRouter = require('./routes/cameraMock');
-
+const presetsRouter = require('./routes/presets');   // импорт
 
 const path = require('path');
 
@@ -25,10 +25,10 @@ app.use('/synoptic/api/types', typesRouter);
 app.use('/synoptic/api/rooms', roomsRouter);
 
 app.use('/synoptic/api/apidoc', express.static(path.join(__dirname, 'public', 'apidoc')));
-
+app.use('/synoptic/api/presets', presetsRouter); // стало
 
 app.use('/synoptic/api', cameraMockRouter); // => POST /synoptic/api/command (эмулятор)
-
+app.use('/synoptic/api/cameras',  camerasRouter);
 
 // Также статические файлы:
 app.use('/synoptic/uploads', express.static(path.join(__dirname, 'uploads')));

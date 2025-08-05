@@ -12,6 +12,14 @@ const Canvas = ({ roomId, onBack }) => {
   const [usersList, setUsersList] = useState([]);
   const [devicesList, setDevicesList] = useState([]);
   const [devicesMap, setDevicesMap] = useState({});
+
+
+const [presetsList, setPresetsList] = useState([]);
+const [presetModal, setPresetModal] = useState({
+  open: false, elem: null, selected: ''
+});
+
+
   const [loading, setLoading] = useState(true);
   const [menu, setMenu] = useState({ visible: false, elem: null, x: 0, y: 0 });
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -23,6 +31,41 @@ const Canvas = ({ roomId, onBack }) => {
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const containerRef = useRef(null);
 
+
+const [cameras, setCameras] = useState([]);
+const [cameraModal, setCameraModal]   = useState({ open:false, identifier:'', name:'' });
+const [presetCreate, setPresetCreate] = useState({ open:false, cameraId:'', number:'', description:'' });
+const [presetDelete, setPresetDelete] = useState({ open:false, cameraId:'', presetId:'' });
+
+
+
+
+const overlayStyle = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(0,0,0,0.3)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 300,
+};
+
+const dialogStyle = {
+  background: '#fff',
+  padding: 20,
+  borderRadius: 6,
+  width: 300,
+};
+
+
+
+
+
+
+
+
+
+
    // ─────────── ГРОМКОСТЬ ───────────
   const [volumeModal, setVolumeModal] = useState({ open: false, elem: null, value: 50 });
   
@@ -30,13 +73,19 @@ const Canvas = ({ roomId, onBack }) => {
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true);
-      const [roomRes, elemsRes, typesRes, usersRes, devicesRes] = await Promise.all([
-        api.get(`/rooms/${roomId}`),
-        api.get(`/rooms/${roomId}/elements`),
-        api.get('/types'),
-        api.get('/users'),
-        api.get('/devices'),
-      ]);
+   const [roomRes, elemsRes, typesRes, usersRes, devicesRes, presetsRes, camerasRes] =
+     await Promise.all([
+       api.get(`/rooms/${roomId}`),
+       api.get(`/rooms/${roomId}/elements`),
+       api.get('/types'),
+       api.get('/users'),
+       api.get('/devices'),
+       api.get('/presets'),           // все пресеты (или только нужной камеры)
+       api.get('/cameras'),
+     ]);
+
+
+
       setRoom(roomRes.data);
       setElements(elemsRes.data);
       setTypesList(typesRes.data);
@@ -49,6 +98,8 @@ const Canvas = ({ roomId, onBack }) => {
       devicesRes.data.forEach(d => { devMap[d.id] = d; });
       setDevicesMap(devMap);
       setLoading(false);
+      setPresetsList(presetsRes.data);
+      setCameras(camerasRes.data);
     };
     fetchAll();
   }, [roomId]);
@@ -107,6 +158,25 @@ const Canvas = ({ roomId, onBack }) => {
 
 
 
+
+
+  const openPresetModal = (e, elem) => {
+  e.stopPropagation();
+  setPresetModal({ open: true, elem, selected: elem.presetId ?? '' });
+  closeMenu();
+};
+const closePresetModal = () =>
+  setPresetModal({ open: false, elem: null, selected: '' });
+
+const savePresetLink = async () => {
+  const { elem, selected } = presetModal;
+  const res = await api.put(
+    `/rooms/${roomId}/elements/${elem.id}`,
+    { presetId: selected || null }
+  );
+  setElements(e => e.map(x => x.id === elem.id ? res.data : x));
+  closePresetModal();
+};
 
 
 
@@ -204,6 +274,17 @@ const Canvas = ({ roomId, onBack }) => {
     setRoom(res.data);
   };
 
+
+
+
+
+
+
+
+
+
+
+
   return (
     <div onClick={closeMenu} style={{ position: 'relative' }}>
       <button onClick={onBack} style={{ marginBottom: '10px' }}>← Назад</button>
@@ -213,6 +294,26 @@ const Canvas = ({ roomId, onBack }) => {
       >
         Добавить элемент
       </button>
+
+
+
+
+<button onClick={()=>setCameraModal({ open:true, identifier:'', name:'' })} style={{marginLeft:8}}>
+  Добавить камеру
+</button>
+<button onClick={()=>setPresetCreate({ open:true, cameraId:'', number:'', description:'' })} style={{marginLeft:8}}>
+  Добавить пресет
+</button>
+<button onClick={()=>setPresetDelete({ open:true, cameraId:'', presetId:'' })} style={{marginLeft:8}}>
+  Удалить пресет
+</button>
+
+
+
+
+
+
+
       {pickerOpen && (
         <div style={{
           position: 'absolute', top: 40, left: 10, zIndex: 200,
@@ -294,6 +395,40 @@ if (src) src = withPrefix(src);
                                 alt=""
                                 style={{ width: 40, height: 40, pointerEvents: 'none' }}
                             />
+
+
+
+
+
+
+
+
+{elem.presetId && (
+  <img
+    src={withPrefix('/synoptic/preset-camera.png')}
+    alt=""
+    title={`Preset #${presetsList.find(p => p.id === elem.presetId)?.number}`}
+    style={{
+
+     position: 'absolute',
+     top: '50%',        // по вертикали по центру 40-px иконки
+     left: -20,         // 4-px зазор: 16px значок + 4px «плечо»
+     transform: 'translateY(-50%)',
+     width: 16,
+     height: 16,
+     cursor: 'pointer'
+    }}
+    onClick={() => api.post(`/presets/${elem.presetId}/call`)}
+  />
+)}
+
+
+
+
+
+
+
+
 
 
 
@@ -393,6 +528,24 @@ if (src) src = withPrefix(src);
                                     Связать с пользователем
                                 </button>
                             </li>
+
+
+
+
+<li>
+  <button
+    onClick={e => openPresetModal(e, menu.elem)}
+    style={{ width:'100%' }}
+  >
+    Связать с пресетом…
+  </button>
+</li>
+
+
+
+
+
+
                             <li>
                                 <button
                                     onClick={e => openDeviceModal(e, menu.elem)}
@@ -465,6 +618,171 @@ if (src) src = withPrefix(src);
                         </div>
                     </div>
                 )}
+
+
+
+
+
+{cameraModal.open && (
+ <div style={overlayStyle} onClick={()=>setCameraModal({open:false})}>
+  <div style={dialogStyle} onClick={e=>e.stopPropagation()}>
+    <h4>Новая камера</h4>
+    <input placeholder="identifier"
+           value={cameraModal.identifier}
+           onChange={e=>setCameraModal(m=>({...m,identifier:e.target.value}))}
+           style={{width:'100%',marginBottom:6}}/>
+    <input placeholder="Название (опц.)"
+           value={cameraModal.name}
+           onChange={e=>setCameraModal(m=>({...m,name:e.target.value}))}
+           style={{width:'100%',marginBottom:12}}/>
+    <div style={{textAlign:'right'}}>
+      <button onClick={()=>setCameraModal({open:false})}>Отмена</button>
+      <button style={{marginLeft:8}}
+        onClick={async ()=>{
+          const {identifier,name}=cameraModal;
+          const res=await api.post('/cameras',{identifier,name});
+          setCameras(c=>[...c,res.data]);
+          setCameraModal({open:false});
+        }}>Сохранить</button>
+    </div>
+  </div>
+ </div>
+)}
+
+
+{presetCreate.open && (
+ <div style={overlayStyle} onClick={()=>setPresetCreate({open:false})}>
+  <div style={dialogStyle} onClick={e=>e.stopPropagation()}>
+    <h4>Новый пресет</h4>
+
+    <select value={presetCreate.cameraId}
+            onChange={e=>setPresetCreate(m=>({...m,cameraId:e.target.value}))}
+            style={{width:'100%',marginBottom:6}}>
+      <option value="">-- выберите камеру --</option>
+      {cameras.map(c=><option key={c.id} value={c.id}>{c.identifier||c.name}</option>)}
+    </select>
+
+    <input placeholder="Номер"
+           value={presetCreate.number}
+           onChange={e=>setPresetCreate(m=>({...m,number:e.target.value}))}
+           style={{width:'100%',marginBottom:6}}/>
+
+    <input placeholder="Описание (опц.)"
+           value={presetCreate.description}
+           onChange={e=>setPresetCreate(m=>({...m,description:e.target.value}))}
+           style={{width:'100%',marginBottom:12}}/>
+
+    {/* показать существующие номера */}
+    {presetCreate.cameraId && (
+      <p style={{fontSize:12, color:'#666'}}>
+        Уже есть: {
+          presetsList
+            .filter(p=>p.cameraId===+presetCreate.cameraId)
+            .map(p=>p.number).join(', ') || 'нет'
+        }
+      </p>
+    )}
+
+    <div style={{textAlign:'right'}}>
+      <button onClick={()=>setPresetCreate({open:false})}>Отмена</button>
+      <button style={{marginLeft:8}}
+        onClick={async ()=>{
+          const {cameraId,number,description}=presetCreate;
+          const res=await api.post('/presets',{cameraId:+cameraId,number:+number,description});
+          setPresetsList(p=>[...p,res.data]);
+          setPresetCreate({open:false});
+        }}>Сохранить</button>
+    </div>
+  </div>
+ </div>
+)}
+
+
+
+{presetDelete.open && (
+ <div style={overlayStyle} onClick={()=>setPresetDelete({open:false})}>
+  <div style={dialogStyle} onClick={e=>e.stopPropagation()}>
+    <h4>Удалить пресет</h4>
+
+    <select value={presetDelete.cameraId}
+            onChange={e=>setPresetDelete(m=>({...m,cameraId:e.target.value,presetId:''}))}
+            style={{width:'100%',marginBottom:6}}>
+      <option value="">-- камера --</option>
+      {cameras.map(c=><option key={c.id} value={c.id}>{c.identifier||c.name}</option>)}
+    </select>
+
+    <select value={presetDelete.presetId}
+            onChange={e=>setPresetDelete(m=>({...m,presetId:e.target.value}))}
+            style={{width:'100%',marginBottom:12}}>
+      <option value="">-- номер --</option>
+      {presetsList
+        .filter(p=>p.cameraId===+presetDelete.cameraId)
+        .map(p=><option key={p.id} value={p.id}>№{p.number}</option>)}
+    </select>
+
+    <div style={{textAlign:'right'}}>
+      <button onClick={()=>setPresetDelete({open:false})}>Отмена</button>
+      <button style={{marginLeft:8, color:'red'}}
+        onClick={async ()=>{
+          await api.delete(`/presets/${presetDelete.presetId}`);
+          setPresetsList(p=>p.filter(x=>x.id!==+presetDelete.presetId));
+          setPresetDelete({open:false});
+        }}>Удалить</button>
+    </div>
+  </div>
+ </div>
+)}
+
+
+
+
+{presetModal.open && (
+  <div
+    onClick={closePresetModal}
+    style={overlayStyle}
+  >
+    <div onClick={e=>e.stopPropagation()} style={dialogStyle}>
+      <h4>Связать с пресетом камеры</h4>
+
+      <label>Выбрать номер:</label><br/>
+      <select
+        value={presetModal.selected}
+        onChange={e=>setPresetModal(m=>({ ...m, selected:+e.target.value }))}
+        style={{ width:'100%', padding:4, margin:'8px 0' }}
+      >
+        <option value="">-- нет --</option>
+        {presetsList.map(p=>(
+          <option key={p.id} value={p.id}>
+            №{p.number} · {p.camera.identifier}
+          </option>
+        ))}
+      </select>
+
+      <div style={{ textAlign:'right', marginTop:12 }}>
+        {presetModal.elem.presetId && (
+          <button
+            onClick={()=>setPresetModal(m=>({...m, selected:''}))}
+            style={{ marginRight: 'auto', color:'red' }}
+          >
+            Отвязать пресет
+          </button>
+        )}
+        <button onClick={closePresetModal} style={{ marginRight:8 }}>
+          Отмена
+        </button>
+        <button onClick={savePresetLink}>
+          Сохранить
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
+
+
+
+
 
 
 
