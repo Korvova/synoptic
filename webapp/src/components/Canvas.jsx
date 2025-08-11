@@ -12,6 +12,7 @@ const Canvas = ({ roomId, onBack }) => {
   const [usersList, setUsersList] = useState([]);
   const [devicesList, setDevicesList] = useState([]);
   const [devicesMap, setDevicesMap] = useState({});
+const clamp = (v, min = 0, max = 100) => Math.min(max, Math.max(min, v));
 
 
 const [presetsList, setPresetsList] = useState([]);
@@ -801,17 +802,67 @@ if (src) src = withPrefix(src);
       style={{ background:'#fff', padding:20, borderRadius:6, width:300 }}
     >
       <h4>Установить громкость</h4>
-      <input
-        type="range" min="0" max="100"
-        value={volumeModal.value}
-        onChange={e =>
-          setVolumeModal(m => ({ ...m, value: +e.target.value }))
-        }
-        style={{ width:'100%' }}
-      />
-      <p style={{ textAlign:'center', margin:8 }}>
-        {volumeModal.value} %
-      </p>
+
+
+
+
+
+<div style={{ display:'flex', alignItems:'center', gap:8 }}>
+  <button
+    type="button"
+    onClick={() =>
+      setVolumeModal(m => ({ ...m, value: clamp(m.value - 5) }))
+    }
+    aria-label="Уменьшить громкость"
+    style={{
+      padding:'10px 16px',
+      fontSize:20,
+      borderRadius:6,
+      cursor:'pointer'
+    }}
+  >
+    –
+  </button>
+
+  <input
+    type="range" min="0" max="100" step="1"
+    value={volumeModal.value}
+    onChange={e =>
+      setVolumeModal(m => ({ ...m, value: +e.target.value }))
+    }
+    style={{
+      flex:1,
+      height:'6px',        // уже
+      appearance:'none',
+      background:'#ccc',
+      borderRadius:'3px',
+      outline:'none'
+    }}
+  />
+
+  <button
+    type="button"
+    onClick={() =>
+      setVolumeModal(m => ({ ...m, value: clamp(m.value + 5) }))
+    }
+    aria-label="Увеличить громкость"
+    style={{
+      padding:'10px 16px',
+      fontSize:20,
+      borderRadius:6,
+      cursor:'pointer'
+    }}
+  >
+    +
+  </button>
+</div>
+
+<p style={{ textAlign:'center', margin:8 }}>
+  {volumeModal.value} %
+</p>
+
+
+
       <div style={{ textAlign:'right' }}>
         <button onClick={closeVolumeModal} style={{ marginRight:8 }}>
           Отмена
